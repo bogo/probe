@@ -3,10 +3,14 @@ import IOKit.hid
 import ProbeCore
 
 struct RawHIDDiagnostics: Equatable {
+    static let noWriteAttempt = "not sent"
+
     var matchedDeviceCount = 0
     var isOpen = false
     var openResult = "not started"
     var registeredDeviceCount = 0
+    var pairingRequestsSent = 0
+    var lastPairingRequestResult = noWriteAttempt
     var reportsReceived = 0
     var decodedReports = 0
     var rejectedReports = 0
@@ -36,6 +40,12 @@ struct RawHIDDiagnostics: Equatable {
             return "Unavailable"
         }
         if reportsReceived == 0 {
+            if lastPairingRequestResult != Self.noWriteAttempt && lastPairingRequestResult != "success" {
+                return "Pairing request failed: \(lastPairingRequestResult)"
+            }
+            if pairingRequestsSent > 0 {
+                return "Pairing requested; waiting for reports"
+            }
             return "Waiting for reports"
         }
         return decodedReports > 0 ? "Receiving reports" : "Receiving undecoded reports"
@@ -49,6 +59,8 @@ struct RawHIDDiagnostics: Equatable {
             "Open result: \(openResult)",
             "Matched devices: \(matchedDeviceCount)",
             "Registered devices: \(registeredDeviceCount)",
+            "Pairing requests sent: \(pairingRequestsSent)",
+            "Last pairing request: \(lastPairingRequestResult)",
             "Reports received: \(reportsReceived)",
             "Decoded reports: \(decodedReports)",
             "Rejected reports: \(rejectedReports)",
@@ -116,6 +128,12 @@ final class RawHIDMonitor {
         emitDiagnostics()
     }
 
+    func requestLiveViewPairing() {
+        for registration in devices.values {
+            sendOryxPairingInit(to: registration)
+        }
+    }
+
     func stop() {
         guard let manager else { return }
         for registration in devices.values {
@@ -151,6 +169,7 @@ final class RawHIDMonitor {
         IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         refreshDeviceCounts()
         emitDiagnostics()
+        sendOryxPairingInit(to: registration)
     }
 
     private func unregister(_ device: IOHIDDevice) {
@@ -200,6 +219,29 @@ final class RawHIDMonitor {
         onDiagnostics(diagnostics)
     }
 
+    private func sendOryxPairingInit(to registration: DeviceRegistration) {
+        var bytes = [UInt8](repeating: 0, count: TelemetryCodec.reportLength)
+        bytes[0] = OryxCommand.pairingInit
+        bytes[1] = OryxCommand.stopBit
+
+        let result = bytes.withUnsafeBufferPointer { buffer in
+            guard let baseAddress = buffer.baseAddress else {
+                return kIOReturnBadArgument
+            }
+            return IOHIDDeviceSetReport(
+                registration.device,
+                kIOHIDReportTypeOutput,
+                CFIndex(0),
+                baseAddress,
+                CFIndex(buffer.count)
+            )
+        }
+
+        diagnostics.pairingRequestsSent += 1
+        diagnostics.lastPairingRequestResult = Self.describe(result: result)
+        emitDiagnostics()
+    }
+
     private func matchedDevices(from manager: IOHIDManager) -> [IOHIDDevice] {
         guard let set = IOHIDManagerCopyDevices(manager) else { return [] }
         let count = CFSetGetCount(set)
@@ -239,6 +281,11 @@ final class RawHIDMonitor {
             return "hello L\(layer.activeLayer) mask \(String(format: "0x%08X", layer.layerState))"
         }
     }
+}
+
+private enum OryxCommand {
+    static let pairingInit: UInt8 = 0x01
+    static let stopBit: UInt8 = 0xFE
 }
 
 private final class DeviceRegistration {

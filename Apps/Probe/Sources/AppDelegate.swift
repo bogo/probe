@@ -273,6 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         addDisabledMenuItem("Last Packet: \(hidDiagnostics.lastPacketSummary)", to: submenu)
         addDisabledMenuItem("Last Event: \(hidDiagnostics.lastEventSummary)", to: submenu)
         submenu.addItem(.separator())
+        addMenuItem("Request Live View Pairing", action: #selector(requestLiveViewPairing), to: submenu)
         addMenuItem("Pulse Sample Key", action: #selector(pulseSampleKey), to: submenu)
         addMenuItem("Copy Debug Info", action: #selector(copyHIDDebugInfo), to: submenu)
         item.submenu = submenu
@@ -454,6 +455,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pressedKeys.remove(keyID)
             updateHUD()
         }
+    }
+
+    @objc private func requestLiveViewPairing() {
+        hidMonitor?.requestLiveViewPairing()
     }
 
     @objc private func copyHIDDebugInfo() {

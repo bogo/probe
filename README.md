@@ -64,6 +64,12 @@ Probe listens for the Voyager Raw HID interface:
 - Usage page: `0xFF60`
 - Usage: `0x61`
 
+On connect, Probe sends ZSA's Oryx live-view pairing-init command over that Raw
+HID interface. Firmware built with ZSA's `oryx` community module will then stream
+physical key positions and layer changes. If diagnostics show `Connected` plus
+`Pairing requested; waiting for reports`, the Raw HID interface is open but the
+keyboard has not replied with live-view events.
+
 Keymapp or other tools may compete for the same Raw HID interface, so close them
 while testing live telemetry.
 
