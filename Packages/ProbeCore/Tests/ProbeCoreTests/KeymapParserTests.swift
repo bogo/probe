@@ -28,6 +28,10 @@ final class KeymapParserTests: XCTestCase {
         XCTAssertEqual(keymap.keyID(row: 11, column: 6), 51)
         XCTAssertEqual(keymap.keyID(row: 10, column: 2), 42)
         XCTAssertEqual(keymap.keyID(row: 4, column: 4), 41)
+
+        let emptyLabel = keymap.resolvedLabel(forKeyID: 0, onLayer: 0)
+        XCTAssertEqual(emptyLabel.primary, "")
+        XCTAssertEqual(emptyLabel.role, .noOp)
     }
 
     func testDisplayLabelUsesShiftedSymbolsWhenShiftIsActive() {

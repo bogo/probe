@@ -31,10 +31,21 @@ struct RawHIDDiagnostics: Equatable {
         return "Connected"
     }
 
+    var telemetrySummary: String {
+        guard isKeyboardConnected else {
+            return "Unavailable"
+        }
+        if reportsReceived == 0 {
+            return "Waiting for reports"
+        }
+        return decodedReports > 0 ? "Receiving reports" : "Receiving undecoded reports"
+    }
+
     var pasteboardReport: String {
         [
             "Probe HID Diagnostics",
             "Connection: \(connectionSummary)",
+            "Telemetry: \(telemetrySummary)",
             "Open result: \(openResult)",
             "Matched devices: \(matchedDeviceCount)",
             "Registered devices: \(registeredDeviceCount)",

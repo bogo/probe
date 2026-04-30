@@ -137,6 +137,9 @@ public struct LayeredKeymap: Sendable {
     }
 
     public func label(forKeyID keyID: Int, onLayer layer: Int) -> KeyLabel {
+        if layers.isEmpty {
+            return KeyLabel(primary: "", raw: "", role: .noOp)
+        }
         guard layers.indices.contains(layer), layers[layer].indices.contains(keyID) else {
             return KeyLabel.unknown("Key \(keyID)")
         }

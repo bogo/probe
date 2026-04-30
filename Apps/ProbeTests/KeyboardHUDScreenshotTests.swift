@@ -37,6 +37,29 @@ final class KeyboardHUDScreenshotTests: XCTestCase {
         add(attachment)
     }
 
+    func testKeyboardHUDEmptyKeymapStillHighlightsPressedKeys() throws {
+        let view = KeyboardHUDView(frame: NSRect(x: 0, y: 0, width: 900, height: 360))
+        view.keymap = LayeredKeymap.voyagerDefault(layers: [])
+        view.activeLayer = 0
+        view.pressedKeys = [0, 49]
+        view.showsHeatmap = false
+
+        let bitmap = try render(view)
+        let metrics = PixelMetrics(bitmap: bitmap)
+
+        XCTAssertGreaterThan(metrics.nonTransparentPixels, 50_000)
+        XCTAssertGreaterThan(metrics.bluePixels, 1_500)
+        XCTAssertLessThan(metrics.heatPixels, 250)
+        XCTAssertLessThan(metrics.contentBounds.width, 880)
+        XCTAssertLessThan(metrics.contentBounds.height, 340)
+
+        let screenshotURL = try writeScreenshot(bitmap, name: "ProbeHUD-empty-keymap-highlight.png")
+        let attachment = XCTAttachment(contentsOfFile: screenshotURL)
+        attachment.name = "ProbeHUD-empty-keymap-highlight"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     func testKeyboardHUDStatsSnapshotRendersWithHeatmapHidden() throws {
         let view = KeyboardHUDView(frame: NSRect(x: 0, y: 0, width: 900, height: 360))
         view.keymap = try Self.sampleKeymap()

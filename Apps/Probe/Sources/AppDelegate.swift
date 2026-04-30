@@ -123,8 +123,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handle(_ event: TelemetryEvent) {
-        guard hasUsableKeymap else { return }
-
         switch event {
         case .key(let keyEvent):
             if keyEvent.activeLayer != TelemetryCodec.unspecifiedActiveLayer {
@@ -140,7 +138,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     pressedShiftKeys.insert(keyID)
                 }
                 heatmapStore.recordKeyDown(layer: activeLayer, keyID: keyID)
-                typingMetricsStore.record(label: keymap.resolvedLabel(forKeyID: keyID, onLayer: activeLayer))
+                if hasUsableKeymap {
+                    typingMetricsStore.record(label: keymap.resolvedLabel(forKeyID: keyID, onLayer: activeLayer))
+                }
             } else {
                 let wasShiftKey = pressedShiftKeys.contains(keyID)
                 pressedKeys.remove(keyID)
@@ -247,9 +247,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func hudVisibilityMenuItem() -> NSMenuItem {
         let title: String
-        if !hasUsableKeymap {
-            title = "HUD Hidden Until Keymap Import"
-        } else if keyboardConnected {
+        if keyboardConnected {
             title = userWantsHUDVisible ? "Hide HUD" : "Show HUD"
         } else {
             title = userWantsHUDVisible ? "Hide HUD When Connected" : "Show HUD When Connected"
@@ -257,7 +255,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let item = NSMenuItem(title: title, action: #selector(toggleHUD), keyEquivalent: "")
         item.target = self
-        item.isEnabled = hasUsableKeymap
         return item
     }
 
@@ -265,6 +262,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSMenuItem(title: "HID Diagnostics", action: nil, keyEquivalent: "")
         let submenu = NSMenu()
         addDisabledMenuItem("Raw HID: \(hidDiagnostics.connectionSummary)", to: submenu)
+        addDisabledMenuItem("Keymap: \(hasUsableKeymap ? "Imported" : "Not imported")", to: submenu)
+        addDisabledMenuItem("Telemetry: \(hidDiagnostics.telemetrySummary)", to: submenu)
         addDisabledMenuItem("Open: \(hidDiagnostics.openResult)", to: submenu)
         addDisabledMenuItem("Matched Devices: \(hidDiagnostics.matchedDeviceCount)", to: submenu)
         addDisabledMenuItem("Registered Devices: \(hidDiagnostics.registeredDeviceCount)", to: submenu)
@@ -316,7 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func syncHUDVisibility() {
-        if userWantsHUDVisible && keyboardConnected && hasUsableKeymap {
+        if userWantsHUDVisible && keyboardConnected {
             panel.orderFrontRegardless()
         } else {
             panel.orderOut(nil)
