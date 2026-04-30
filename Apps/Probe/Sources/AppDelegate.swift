@@ -547,7 +547,7 @@ private enum StatusItemIcon {
             return nil
         }
         image.accessibilityDescription = "Probe"
-        image.isTemplate = false
+        image.isTemplate = true
         image.size = NSSize(width: 18, height: 18)
         return image
     }
