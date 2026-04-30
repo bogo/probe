@@ -1,0 +1,61 @@
+name: Probe
+options:
+  bundleIdPrefix: wtf.bogo
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  ProbeCore:
+    path: Packages/ProbeCore
+targets:
+  Probe:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Apps/Probe/Sources
+      - path: Apps/Probe/Resources
+        buildPhase: resources
+    dependencies:
+      - package: ProbeCore
+    preBuildScripts:
+      - name: Swift Syntax Lint
+        basedOnDependencyAnalysis: false
+        script: |
+          /bin/sh "${SRCROOT}/Scripts/lint-swift.sh"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.bogo.probe
+        PRODUCT_NAME: Probe
+        INFOPLIST_FILE: Apps/Probe/Info.plist
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+  ProbeSnapshotTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Apps/ProbeTests
+      - path: Apps/Probe/Sources/HUDSettingsStore.swift
+      - path: Apps/Probe/Sources/KeymapImportSupport.swift
+      - path: Apps/Probe/Sources/KeymapArchiveImporter.swift
+      - path: Apps/Probe/Sources/KeyboardHUDView.swift
+      - path: Apps/Probe/Sources/RawHIDMonitor.swift
+      - path: Apps/Probe/Sources/TypingMetricsStore.swift
+    dependencies:
+      - package: ProbeCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: wtf.bogo.probe.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Automatic
+schemes:
+  Probe:
+    build:
+      targets:
+        Probe: all
+        ProbeSnapshotTests: [test]
+    test:
+      targets:
+        - ProbeSnapshotTests

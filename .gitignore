@@ -1,0 +1,11 @@
+.DS_Store
+*.swp
+.derivedData/
+.build/
+Packages/**/.build/
+*.xcuserdata/
+**/xcuserdata/
+*.xcuserdatad/
+*.xcodeproj/
+zsa_voyager_*_source/
+*.zip

@@ -1,0 +1,62 @@
+public enum VoyagerLayout {
+    public static let keyCount = 52
+
+    public static let defaultPhysicalKeys: [PhysicalKey] = [
+        PhysicalKey(id: 0, matrixRow: 0, matrixColumn: 1, x: 0, y: 0.5),
+        PhysicalKey(id: 1, matrixRow: 0, matrixColumn: 2, x: 1, y: 0.5),
+        PhysicalKey(id: 2, matrixRow: 0, matrixColumn: 3, x: 2, y: 0.25),
+        PhysicalKey(id: 3, matrixRow: 0, matrixColumn: 4, x: 3, y: 0),
+        PhysicalKey(id: 4, matrixRow: 0, matrixColumn: 5, x: 4, y: 0.25),
+        PhysicalKey(id: 5, matrixRow: 0, matrixColumn: 6, x: 5, y: 0.5),
+        PhysicalKey(id: 6, matrixRow: 6, matrixColumn: 0, x: 10, y: 0.5),
+        PhysicalKey(id: 7, matrixRow: 6, matrixColumn: 1, x: 11, y: 0.25),
+        PhysicalKey(id: 8, matrixRow: 6, matrixColumn: 2, x: 12, y: 0),
+        PhysicalKey(id: 9, matrixRow: 6, matrixColumn: 3, x: 13, y: 0.25),
+        PhysicalKey(id: 10, matrixRow: 6, matrixColumn: 4, x: 14, y: 0.5),
+        PhysicalKey(id: 11, matrixRow: 6, matrixColumn: 5, x: 15, y: 0.5),
+
+        PhysicalKey(id: 12, matrixRow: 1, matrixColumn: 1, x: 0, y: 1.5),
+        PhysicalKey(id: 13, matrixRow: 1, matrixColumn: 2, x: 1, y: 1.5),
+        PhysicalKey(id: 14, matrixRow: 1, matrixColumn: 3, x: 2, y: 1.25),
+        PhysicalKey(id: 15, matrixRow: 1, matrixColumn: 4, x: 3, y: 1),
+        PhysicalKey(id: 16, matrixRow: 1, matrixColumn: 5, x: 4, y: 1.25),
+        PhysicalKey(id: 17, matrixRow: 1, matrixColumn: 6, x: 5, y: 1.5),
+        PhysicalKey(id: 18, matrixRow: 7, matrixColumn: 0, x: 10, y: 1.5),
+        PhysicalKey(id: 19, matrixRow: 7, matrixColumn: 1, x: 11, y: 1.25),
+        PhysicalKey(id: 20, matrixRow: 7, matrixColumn: 2, x: 12, y: 1),
+        PhysicalKey(id: 21, matrixRow: 7, matrixColumn: 3, x: 13, y: 1.25),
+        PhysicalKey(id: 22, matrixRow: 7, matrixColumn: 4, x: 14, y: 1.5),
+        PhysicalKey(id: 23, matrixRow: 7, matrixColumn: 5, x: 15, y: 1.5),
+
+        PhysicalKey(id: 24, matrixRow: 2, matrixColumn: 1, x: 0, y: 2.5),
+        PhysicalKey(id: 25, matrixRow: 2, matrixColumn: 2, x: 1, y: 2.5),
+        PhysicalKey(id: 26, matrixRow: 2, matrixColumn: 3, x: 2, y: 2.25),
+        PhysicalKey(id: 27, matrixRow: 2, matrixColumn: 4, x: 3, y: 2),
+        PhysicalKey(id: 28, matrixRow: 2, matrixColumn: 5, x: 4, y: 2.25),
+        PhysicalKey(id: 29, matrixRow: 2, matrixColumn: 6, x: 5, y: 2.5),
+        PhysicalKey(id: 30, matrixRow: 8, matrixColumn: 0, x: 10, y: 2.5),
+        PhysicalKey(id: 31, matrixRow: 8, matrixColumn: 1, x: 11, y: 2.25),
+        PhysicalKey(id: 32, matrixRow: 8, matrixColumn: 2, x: 12, y: 2),
+        PhysicalKey(id: 33, matrixRow: 8, matrixColumn: 3, x: 13, y: 2.25),
+        PhysicalKey(id: 34, matrixRow: 8, matrixColumn: 4, x: 14, y: 2.5),
+        PhysicalKey(id: 35, matrixRow: 8, matrixColumn: 5, x: 15, y: 2.5),
+
+        PhysicalKey(id: 36, matrixRow: 3, matrixColumn: 1, x: 0, y: 3.5),
+        PhysicalKey(id: 37, matrixRow: 3, matrixColumn: 2, x: 1, y: 3.5),
+        PhysicalKey(id: 38, matrixRow: 3, matrixColumn: 3, x: 2, y: 3.25),
+        PhysicalKey(id: 39, matrixRow: 3, matrixColumn: 4, x: 3, y: 3),
+        PhysicalKey(id: 40, matrixRow: 3, matrixColumn: 5, x: 4, y: 3.25),
+        PhysicalKey(id: 41, matrixRow: 4, matrixColumn: 4, x: 5, y: 3.5),
+        PhysicalKey(id: 42, matrixRow: 10, matrixColumn: 2, x: 10, y: 3.5),
+        PhysicalKey(id: 43, matrixRow: 9, matrixColumn: 1, x: 11, y: 3.25),
+        PhysicalKey(id: 44, matrixRow: 9, matrixColumn: 2, x: 12, y: 3),
+        PhysicalKey(id: 45, matrixRow: 9, matrixColumn: 3, x: 13, y: 3.25),
+        PhysicalKey(id: 46, matrixRow: 9, matrixColumn: 4, x: 14, y: 3.5),
+        PhysicalKey(id: 47, matrixRow: 9, matrixColumn: 5, x: 15, y: 3.5),
+
+        PhysicalKey(id: 48, matrixRow: 5, matrixColumn: 0, x: 5, y: 4.5, rotation: 30),
+        PhysicalKey(id: 49, matrixRow: 5, matrixColumn: 1, x: 6, y: 4.75, rotation: 30),
+        PhysicalKey(id: 50, matrixRow: 11, matrixColumn: 5, x: 9, y: 4.75, rotation: -30),
+        PhysicalKey(id: 51, matrixRow: 11, matrixColumn: 6, x: 10, y: 4.5, rotation: -30)
+    ]
+}
