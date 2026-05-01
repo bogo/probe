@@ -1,9 +1,15 @@
 # Probe
 
+<p align="center">
+  <img src="Apps/Probe/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" alt="Probe app icon" width="128">
+</p>
+
 Probe is a tiny native macOS HUD for the ZSA Voyager. It floats above your
 desktop, listens to Raw HID telemetry from your keyboard, and renders a live
 transparent keymap with pressed-key highlights, layer changes, heatmap history,
 and typing metrics.
+
+[Download the latest notarized macOS build from GitHub Releases.](https://github.com/bogo/probe/releases)
 
 ![Probe HUD screenshot](Docs/probe-hud.png)
 
