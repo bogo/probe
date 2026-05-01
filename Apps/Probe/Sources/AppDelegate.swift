@@ -14,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let heatmapStore = HeatmapStore()
     private let hudSettingsStore = HUDSettingsStore()
     private let typingMetricsStore = TypingMetricsStore()
+    private let appUpdater = AppUpdater()
+    private let menuBarIconStore = MenuBarIconStore()
 
     private var keymap = LayeredKeymap.voyagerDefault(layers: [])
     private var hidDiagnostics = RawHIDDiagnostics()
@@ -32,8 +34,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var samplePulseTask: Task<Void, Never>?
     private var metricsRefreshTimer: Timer?
     private var onboardingController: KeymapOnboardingWindowController?
+    private var settingsController: ProbeSettingsWindowController?
+    private var menuBarIcon = MenuBarIconChoice.defaultChoice
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        menuBarIcon = menuBarIconStore.load()
         keymap = KeymapSourceLoader.load()
         hasUsableKeymap = !keymap.layers.isEmpty
         configurePanel()
@@ -226,8 +231,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "Import Keymap...", action: #selector(importKeymapFromPanel), keyEquivalent: ""))
         menu.addItem(debugMenuItem())
         menu.addItem(.separator())
+        menu.addItem(settingsMenuItem())
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Reset Session Heatmap", action: #selector(resetSessionHeatmap), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Reset All-Time Heatmap", action: #selector(resetAllTimeHeatmap), keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(appUpdater.checkForUpdatesMenuItem())
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Probe", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -254,6 +263,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let item = NSMenuItem(title: title, action: #selector(toggleHUD), keyEquivalent: "")
+        item.target = self
+        return item
+    }
+
+    private func settingsMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
         item.target = self
         return item
     }
@@ -424,7 +439,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
 
         button.title = ""
-        button.image = icon.image
+        button.image = icon.image(menuBarIcon: menuBarIcon)
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
         button.toolTip = statusTooltip(for: icon)
@@ -477,6 +492,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateHUD()
     }
 
+    @objc private func showSettings() {
+        if settingsController == nil {
+            settingsController = ProbeSettingsWindowController(
+                selectedIcon: menuBarIcon,
+                onIconSelected: { [weak self] choice in
+                    self?.setMenuBarIcon(choice)
+                }
+            )
+        }
+
+        settingsController?.update(selectedIcon: menuBarIcon)
+        settingsController?.window?.center()
+        settingsController?.showWindow(nil)
+        settingsController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func setMenuBarIcon(_ choice: MenuBarIconChoice) {
+        menuBarIcon = choice
+        menuBarIconStore.save(choice)
+        setStatusItemIcon(.normal)
+    }
+
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
     }
@@ -514,9 +552,9 @@ private enum StatusItemIcon {
         }
     }
 
-    var image: NSImage? {
-        if self == .normal, let svgImage = Self.svgImage() {
-            return svgImage
+    func image(menuBarIcon: MenuBarIconChoice) -> NSImage? {
+        if self == .normal, let statusImage = menuBarIcon.image(pointSize: 20) {
+            return statusImage
         }
 
         let image =
@@ -544,17 +582,6 @@ private enum StatusItemIcon {
         }
     }
 
-    private static func svgImage() -> NSImage? {
-        guard let url = Bundle.main.url(forResource: "ProbeStatusIcon", withExtension: "svg"),
-            let image = NSImage(contentsOf: url)
-        else {
-            return nil
-        }
-        image.accessibilityDescription = "Probe"
-        image.isTemplate = true
-        image.size = NSSize(width: 18, height: 18)
-        return image
-    }
 }
 
 private enum OnboardingDefaults {

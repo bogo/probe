@@ -29,6 +29,7 @@ your own Voyager keymap so the HUD can label keys correctly.
 - macOS 14 or newer
 - Xcode with Swift 6 support
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+- [Sparkle](https://sparkle-project.org/) is resolved by Swift Package Manager
 - ZSA Voyager firmware that emits Probe-compatible 32-byte Raw HID telemetry
 
 ## Getting Started
@@ -82,6 +83,28 @@ while testing live telemetry.
 - `Docs/probe-hud.png`: README screenshot generated from the screenshot tests
 
 `Probe.xcodeproj` is generated and intentionally ignored by git.
+
+## Updates
+
+Probe uses Sparkle 2 via Swift Package Manager. The project includes a default
+appcast at `https://raw.githubusercontent.com/bogo/probe/main/appcast.xml` and a
+`Check for Updates...` menu item.
+
+Release builds need a Sparkle EdDSA key before update checks can run:
+
+```sh
+.derivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys
+```
+
+Keep the private key in your Keychain. Set the printed public key as
+`SPARKLE_PUBLIC_ED_KEY` for release builds, then use Sparkle's `generate_appcast`
+tool to update `appcast.xml` for signed release archives.
+
+For example:
+
+```sh
+xcodebuild -project Probe.xcodeproj -scheme Probe -configuration Release SPARKLE_PUBLIC_ED_KEY="..."
+```
 
 ## Tests
 

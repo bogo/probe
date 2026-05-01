@@ -6,6 +6,9 @@ options:
 packages:
   ProbeCore:
     path: Packages/ProbeCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.1
 targets:
   Probe:
     type: application
@@ -17,6 +20,8 @@ targets:
         buildPhase: resources
     dependencies:
       - package: ProbeCore
+      - package: Sparkle
+        product: Sparkle
     preBuildScripts:
       - name: Swift Syntax Lint
         basedOnDependencyAnalysis: false
@@ -27,9 +32,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: wtf.bogo.probe
         PRODUCT_NAME: Probe
         INFOPLIST_FILE: Apps/Probe/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_VERSION: "6.0"
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
+        SPARKLE_FEED_URL: https://raw.githubusercontent.com/bogo/probe/main/appcast.xml
+        SPARKLE_PUBLIC_ED_KEY: s48m7qBwEffcLdFGHWksFUUu1KhClI5kdva5nEWTUeA=
   ProbeSnapshotTests:
     type: bundle.unit-test
     platform: macOS
