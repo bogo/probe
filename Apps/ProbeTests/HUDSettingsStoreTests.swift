@@ -13,7 +13,11 @@ final class HUDSettingsStoreTests: XCTestCase {
             scale: 1.22,
             opacity: 0.65,
             showsHeatmap: false,
-            showsTypingStats: true
+            showsTypingStats: true,
+            usesSymbolicKeyLabels: true,
+            keyboardColorTheme: .aurora,
+            heatmapColorTheme: .violet,
+            graphColorTheme: .amber
         )
 
         store.save(settings)
@@ -40,7 +44,11 @@ final class HUDSettingsStoreTests: XCTestCase {
             scale: 1,
             opacity: 0.88,
             showsHeatmap: true,
-            showsTypingStats: false
+            showsTypingStats: false,
+            usesSymbolicKeyLabels: false,
+            keyboardColorTheme: .probe,
+            heatmapColorTheme: .flare,
+            graphColorTheme: .signal
         )
 
         store.save(settings)
@@ -66,14 +74,22 @@ final class HUDSettingsStoreTests: XCTestCase {
             scale: 1,
             opacity: 0.88,
             showsHeatmap: true,
-            showsTypingStats: false
+            showsTypingStats: false,
+            usesSymbolicKeyLabels: false,
+            keyboardColorTheme: .probe,
+            heatmapColorTheme: .flare,
+            graphColorTheme: .signal
         )
         let centeredSettings = HUDSettings(
             frame: NSRect(x: 320, y: 260, width: 720, height: 288),
             scale: 1,
             opacity: 0.88,
             showsHeatmap: true,
-            showsTypingStats: false
+            showsTypingStats: false,
+            usesSymbolicKeyLabels: false,
+            keyboardColorTheme: .probe,
+            heatmapColorTheme: .flare,
+            graphColorTheme: .signal
         )
 
         store.save(cornerSettings)

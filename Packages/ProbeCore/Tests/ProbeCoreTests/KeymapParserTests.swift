@@ -42,4 +42,61 @@ final class KeymapParserTests: XCTestCase {
         XCTAssertEqual(KeyLabel(primary: "Tab", raw: "KC_TAB").displayLabel(shifted: true).primary, "Tab")
     }
 
+    func testDisplayLabelUsesMacOSKeyGlyphsWhenEnabled() {
+        XCTAssertEqual(KeyLabel(primary: "Esc", raw: "KC_ESC").displayLabel(shifted: false, usesSymbolicKeyLabels: true).primary, "⎋")
+        XCTAssertEqual(KeyLabel(primary: "Tab", raw: "KC_TAB").displayLabel(shifted: false, usesSymbolicKeyLabels: true).primary, "⇥")
+        XCTAssertEqual(KeyLabel(primary: "Shift", raw: "KC_LSFT").displayLabel(shifted: false, usesSymbolicKeyLabels: true).primary, "⇧")
+        XCTAssertEqual(KeyLabel(primary: "Ctrl", raw: "KC_LCTL").displayLabel(shifted: false, usesSymbolicKeyLabels: true).primary, "⌃")
+        XCTAssertEqual(KeyLabel(primary: "Delete", raw: "KC_BSPC").displayLabel(shifted: false, usesSymbolicKeyLabels: true).primary, "⌫")
+        XCTAssertEqual(KeyLabel(primary: "Return", raw: "KC_ENT").displayLabel(shifted: false, usesSymbolicKeyLabels: true).primary, "↩")
+        XCTAssertEqual(
+            KeyLabel(primary: "Cmd+Shift+4", raw: "LGUI(LSFT(KC_4))")
+                .displayLabel(shifted: false, usesSymbolicKeyLabels: true)
+                .primary,
+            "⌘⇧4"
+        )
+        XCTAssertEqual(
+            KeyLabel(primary: "Shift", secondary: "2x Tab", raw: "TD(DANCE_0)")
+                .displayLabel(shifted: false, usesSymbolicKeyLabels: true)
+                .secondary,
+            "2x ⇥"
+        )
+    }
+
+    func testParsesOryxTapDanceHoldAndDoubleTapLabels() throws {
+        let source =
+            SyntheticKeymapSource.source
+            .replacingOccurrences(of: "MT(MOD_LSFT, KC_TAB)", with: "TD(DANCE_0)")
+                + """
+
+                enum tap_dance_codes {
+                  DANCE_0,
+                };
+
+                void dance_0_finished(tap_dance_state_t *state, void *user_data);
+                void dance_0_reset(tap_dance_state_t *state, void *user_data);
+
+                void dance_0_finished(tap_dance_state_t *state, void *user_data) {
+                    dance_state[0].step = dance_step(state);
+                    switch (dance_state[0].step) {
+                        case SINGLE_HOLD: register_code16(KC_LEFT_SHIFT); break;
+                        case DOUBLE_TAP: register_code16(KC_TAB); break;
+                    }
+                }
+
+                tap_dance_action_t tap_dance_actions[] = {
+                        [DANCE_0] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, dance_0_finished, dance_0_reset),
+                };
+                """
+
+        let layers = try KeymapParser.parse(source)
+        let keymap = LayeredKeymap.voyagerDefault(layers: layers)
+        let label = keymap.label(forKeyID: 24, onLayer: 0)
+
+        XCTAssertEqual(label.primary, "Shift")
+        XCTAssertEqual(label.secondary, "2x Tab")
+        XCTAssertEqual(label.raw, "TD(DANCE_0)")
+        XCTAssertEqual(label.role, .modTap)
+    }
+
 }

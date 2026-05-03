@@ -129,6 +129,99 @@ final class KeyboardHUDScreenshotTests: XCTestCase {
         add(attachment)
     }
 
+    func testKeyboardHUDSymbolicKeyLabelsSnapshotRendersMacOSGlyphs() throws {
+        let view = KeyboardHUDView(frame: NSRect(x: 0, y: 0, width: 900, height: 360))
+        view.keymap = try Self.sampleKeymap()
+        view.activeLayer = 0
+        view.usesSymbolicKeyLabels = true
+        view.pressedKeys = [0, 24, 47]
+
+        let bitmap = try render(view)
+        let metrics = PixelMetrics(bitmap: bitmap)
+
+        XCTAssertGreaterThan(metrics.nonTransparentPixels, 50_000)
+        XCTAssertGreaterThan(metrics.bluePixels, 1_000)
+        XCTAssertLessThan(metrics.contentBounds.width, 880)
+        XCTAssertLessThan(metrics.contentBounds.height, 340)
+
+        let screenshotURL = try writeScreenshot(bitmap, name: "ProbeHUD-symbolic-labels.png")
+        let attachment = XCTAttachment(contentsOfFile: screenshotURL)
+        attachment.name = "ProbeHUD-symbolic-labels"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testKeyboardHUDThemeSnapshotRendersAlternatePalette() throws {
+        let view = KeyboardHUDView(frame: NSRect(x: 0, y: 0, width: 900, height: 360))
+        view.keymap = try Self.sampleKeymap()
+        view.activeLayer = 0
+        view.colorTheme = .aurora
+        view.heatmapColorTheme = .lagoon
+        view.graphColorTheme = .amber
+        view.showsTypingStats = true
+        view.pressedKeys = [25]
+        view.heatmap = HeatmapSnapshot(
+            allTimeCounts: [
+                HeatmapSnapshot.key(layer: 0, keyID: 24): 8,
+                HeatmapSnapshot.key(layer: 0, keyID: 25): 12,
+                HeatmapSnapshot.key(layer: 0, keyID: 26): 5
+            ]
+        )
+        view.typingMetrics = TypingMetricsSnapshot(
+            strokesPerSecond: 2.2,
+            strokesPerMinute: 132,
+            wordsPerMinute: 54,
+            backspacesPerMinute: 6,
+            buckets: (0..<TypingMetricsStore.bucketCount).map {
+                if $0 % 5 == 0 || $0 > 20 {
+                    return TypingMetricsBucket(strokes: 0, backspaces: 0, isFuture: $0 > 20)
+                }
+                return TypingMetricsBucket(strokes: ($0 % 6) + 1, backspaces: $0 % 9 == 0 ? 1 : 0)
+            },
+            scrollProgress: 0.35
+        )
+
+        let bitmap = try render(view)
+        let metrics = PixelMetrics(bitmap: bitmap)
+
+        XCTAssertGreaterThan(metrics.nonTransparentPixels, 50_000)
+        XCTAssertLessThan(metrics.contentBounds.width, 880)
+        XCTAssertLessThan(metrics.contentBounds.height, 340)
+
+        let screenshotURL = try writeScreenshot(bitmap, name: "ProbeHUD-separated-color-themes.png")
+        let attachment = XCTAttachment(contentsOfFile: screenshotURL)
+        attachment.name = "ProbeHUD-separated-color-themes"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testKeyboardHUDTinyDanceLabelRenderDoesNotCrash() throws {
+        let labels = (0..<VoyagerLayout.keyCount).map { index in
+            if index == 24 {
+                return KeyLabel(
+                    primary: "When held Left shift",
+                    secondary: "When double-tapped Tab",
+                    raw: "TD(LSFT_TAB)",
+                    role: .modTap
+                )
+            }
+            return KeyLabel(primary: "", raw: "KC_NO", role: .noOp)
+        }
+        let view = KeyboardHUDView(frame: NSRect(x: 0, y: 0, width: 96, height: 40))
+        view.keymap = LayeredKeymap.voyagerDefault(layers: [labels])
+        view.activeLayer = 0
+        view.pressedKeys = [24]
+        view.showsHeatmap = false
+        view.usesSymbolicKeyLabels = true
+
+        let bitmap = try render(view)
+        let metrics = PixelMetrics(bitmap: bitmap)
+
+        XCTAssertEqual(bitmap.pixelsWide, 96)
+        XCTAssertEqual(bitmap.pixelsHigh, 40)
+        XCTAssertGreaterThan(metrics.nonTransparentPixels, 0)
+    }
+
     private func render(_ view: KeyboardHUDView) throws -> NSBitmapImageRep {
         guard
             let bitmap = NSBitmapImageRep(

@@ -72,17 +72,24 @@ public struct KeyLabel: Codable, Hashable, Sendable {
         KeyLabel(primary: raw, raw: raw, role: .custom)
     }
 
-    public func displayLabel(shifted: Bool) -> KeyLabel {
-        guard shifted, let shiftedPrimary = Self.shiftedPrimary(for: self) else {
-            return self
+    public func displayLabel(shifted: Bool, usesSymbolicKeyLabels: Bool = false) -> KeyLabel {
+        let shiftedLabel =
+            if shifted, let shiftedPrimary = Self.shiftedPrimary(for: self) {
+                KeyLabel(
+                    primary: shiftedPrimary,
+                    secondary: secondary,
+                    raw: raw,
+                    role: role,
+                    isTransparent: isTransparent
+                )
+            } else {
+                self
+            }
+
+        guard usesSymbolicKeyLabels else {
+            return shiftedLabel
         }
-        return KeyLabel(
-            primary: shiftedPrimary,
-            secondary: secondary,
-            raw: raw,
-            role: role,
-            isTransparent: isTransparent
-        )
+        return shiftedLabel.symbolicLabel()
     }
 
     private static func shiftedPrimary(for label: KeyLabel) -> String? {
@@ -110,6 +117,69 @@ public struct KeyLabel: Codable, Hashable, Sendable {
         "KC_BSLS": "|", "KC_SCLN": ":", "KC_QUOTE": "\"", "KC_QUOT": "\"",
         "KC_COMMA": "<", "KC_COMM": "<", "KC_DOT": ">", "KC_SLASH": "?",
         "KC_SLSH": "?"
+    ]
+
+    private func symbolicLabel() -> KeyLabel {
+        KeyLabel(
+            primary: Self.symbolicText(for: primary),
+            secondary: secondary.map(Self.symbolicText(for:)),
+            raw: raw,
+            role: role,
+            isTransparent: isTransparent
+        )
+    }
+
+    private static func symbolicText(for text: String) -> String {
+        if let symbol = symbolicLabels[text] {
+            return symbol
+        }
+
+        if text.hasPrefix("2x ") {
+            let tail = String(text.dropFirst(3))
+            return "2x \(symbolicText(for: tail))"
+        }
+
+        if text.hasPrefix("Hold ") {
+            let tail = String(text.dropFirst(5))
+            return "Hold \(symbolicText(for: tail))"
+        }
+
+        if text.contains("+") {
+            let parts = text.split(separator: "+").map { symbolicText(for: String($0)) }
+            return parts.joined()
+        }
+
+        return text
+    }
+
+    private static let symbolicLabels: [String: String] = [
+        "Esc": "⎋",
+        "Escape": "⎋",
+        "Tab": "⇥",
+        "Shift": "⇧",
+        "Ctrl": "⌃",
+        "Control": "⌃",
+        "Opt": "⌥",
+        "Option": "⌥",
+        "Cmd": "⌘",
+        "Command": "⌘",
+        "Space": "␣",
+        "Delete": "⌫",
+        "Del": "⌫",
+        "Bksp": "⌫",
+        "Backspace": "⌫",
+        "Forward Delete": "⌦",
+        "Return": "↩",
+        "Enter": "⌤",
+        "Caps Lock": "⇪",
+        "Left": "←",
+        "Right": "→",
+        "Up": "↑",
+        "Down": "↓",
+        "Home": "↖",
+        "End": "↘",
+        "Page Up": "⇞",
+        "Page Down": "⇟"
     ]
 }
 

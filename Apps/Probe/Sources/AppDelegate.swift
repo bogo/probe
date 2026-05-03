@@ -25,6 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hudOpacity = HUDSettings.defaultOpacity
     private var showsHeatmap = HUDSettings.defaultShowsHeatmap
     private var showsTypingStats = HUDSettings.defaultShowsTypingStats
+    private var usesSymbolicKeyLabels = HUDSettings.defaultUsesSymbolicKeyLabels
+    private var keyboardColorTheme = HUDSettings.defaultKeyboardColorTheme
+    private var heatmapColorTheme = HUDSettings.defaultHeatmapColorTheme
+    private var graphColorTheme = HUDSettings.defaultGraphColorTheme
     private var userWantsHUDVisible = true
     private var keyboardConnected = false
     private var hasUsableKeymap = false
@@ -63,6 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hudOpacity = settings.opacity
         showsHeatmap = settings.showsHeatmap
         showsTypingStats = settings.showsTypingStats
+        usesSymbolicKeyLabels = settings.usesSymbolicKeyLabels
+        keyboardColorTheme = settings.keyboardColorTheme
+        heatmapColorTheme = settings.heatmapColorTheme
+        graphColorTheme = settings.graphColorTheme
 
         panel = HUDPanel(contentRect: settings.frame)
         panel.delegate = self
@@ -168,6 +176,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hudView.heatmap = heatmapStore.snapshot()
         hudView.showsHeatmap = showsHeatmap
         hudView.showsTypingStats = showsTypingStats
+        hudView.usesSymbolicKeyLabels = usesSymbolicKeyLabels
+        hudView.colorTheme = keyboardColorTheme
+        hudView.heatmapColorTheme = heatmapColorTheme
+        hudView.graphColorTheme = graphColorTheme
         hudView.typingMetrics = typingMetricsStore.snapshot()
         hudView.needsDisplay = true
     }
@@ -191,7 +203,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .modifier:
             return label.primary == "Shift" || Self.shiftRawKeycodes.contains(label.raw)
         case .modTap:
-            return label.secondary?.split(separator: "+").contains { $0 == "Shift" } == true
+            return label.primary == "Shift"
+                || label.secondary?.split(separator: "+").contains { $0 == "Shift" } == true
         default:
             return false
         }
@@ -206,17 +219,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let opacityMenu = NSMenuItem(title: "Opacity", action: nil, keyEquivalent: "")
         let opacitySubmenu = NSMenu()
-        addMenuItem("45%", action: #selector(setOpacity45), to: opacitySubmenu)
-        addMenuItem("65%", action: #selector(setOpacity65), to: opacitySubmenu)
-        addMenuItem("85%", action: #selector(setOpacity85), to: opacitySubmenu)
+        let selectedOpacity = HUDOpacityChoice.nearest(to: hudOpacity)
+        addMenuItem(
+            HUDOpacityChoice.translucent.title,
+            action: #selector(setOpacity45),
+            to: opacitySubmenu,
+            state: selectedOpacity == .translucent ? .on : .off
+        )
+        addMenuItem(
+            HUDOpacityChoice.balanced.title,
+            action: #selector(setOpacity65),
+            to: opacitySubmenu,
+            state: selectedOpacity == .balanced ? .on : .off
+        )
+        addMenuItem(
+            HUDOpacityChoice.vivid.title,
+            action: #selector(setOpacity85),
+            to: opacitySubmenu,
+            state: selectedOpacity == .vivid ? .on : .off
+        )
         menu.setSubmenu(opacitySubmenu, for: opacityMenu)
         menu.addItem(opacityMenu)
 
         let scaleMenu = NSMenuItem(title: "Scale", action: nil, keyEquivalent: "")
         let scaleSubmenu = NSMenu()
-        addMenuItem("Small", action: #selector(setScaleSmall), to: scaleSubmenu)
-        addMenuItem("Medium", action: #selector(setScaleMedium), to: scaleSubmenu)
-        addMenuItem("Large", action: #selector(setScaleLarge), to: scaleSubmenu)
+        let selectedScale = HUDScaleChoice.nearest(to: hudScale)
+        addMenuItem(
+            HUDScaleChoice.small.title,
+            action: #selector(setScaleSmall),
+            to: scaleSubmenu,
+            state: selectedScale == .small ? .on : .off
+        )
+        addMenuItem(
+            HUDScaleChoice.medium.title,
+            action: #selector(setScaleMedium),
+            to: scaleSubmenu,
+            state: selectedScale == .medium ? .on : .off
+        )
+        addMenuItem(
+            HUDScaleChoice.large.title,
+            action: #selector(setScaleLarge),
+            to: scaleSubmenu,
+            state: selectedScale == .large ? .on : .off
+        )
         menu.setSubmenu(scaleSubmenu, for: scaleMenu)
         menu.addItem(scaleMenu)
 
@@ -224,6 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let displaySubmenu = NSMenu()
         addMenuItem(showsHeatmap ? "Hide Heatmap" : "Show Heatmap", action: #selector(toggleHeatmap), to: displaySubmenu)
         addMenuItem(showsTypingStats ? "Hide Typing Stats" : "Show Typing Stats", action: #selector(toggleTypingStats), to: displaySubmenu)
+        addMenuItem(usesSymbolicKeyLabels ? "Use Text Key Labels" : "Use macOS Key Glyphs", action: #selector(toggleSymbolicKeyLabels), to: displaySubmenu)
         menu.setSubmenu(displaySubmenu, for: displayMenu)
         menu.addItem(displayMenu)
 
@@ -242,9 +288,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
     }
 
-    private func addMenuItem(_ title: String, action: Selector, to menu: NSMenu) {
+    private func addMenuItem(
+        _ title: String,
+        action: Selector,
+        to menu: NSMenu,
+        state: NSControl.StateValue = .off
+    ) {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
         item.target = self
+        item.state = state
         menu.addItem(item)
     }
 
@@ -307,19 +359,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rebuildMenu()
     }
 
-    @objc private func setOpacity45() { setOpacity(0.45) }
-    @objc private func setOpacity65() { setOpacity(0.65) }
-    @objc private func setOpacity85() { setOpacity(0.85) }
+    @objc private func setOpacity45() { setOpacity(HUDOpacityChoice.translucent.value) }
+    @objc private func setOpacity65() { setOpacity(HUDOpacityChoice.balanced.value) }
+    @objc private func setOpacity85() { setOpacity(HUDOpacityChoice.vivid.value) }
 
     private func setOpacity(_ opacity: CGFloat) {
         hudOpacity = opacity
         panel.alphaValue = opacity
         saveHUDSettings()
+        rebuildMenu()
+        settingsController?.update(state: currentSettingsState)
     }
 
-    @objc private func setScaleSmall() { setScale(0.78) }
-    @objc private func setScaleMedium() { setScale(1.0) }
-    @objc private func setScaleLarge() { setScale(1.22) }
+    @objc private func setScaleSmall() { setScale(HUDScaleChoice.small.value) }
+    @objc private func setScaleMedium() { setScale(HUDScaleChoice.medium.value) }
+    @objc private func setScaleLarge() { setScale(HUDScaleChoice.large.value) }
 
     private func setScale(_ scale: CGFloat) {
         hudScale = scale
@@ -328,6 +382,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let newOrigin = CGPoint(x: currentCenter.x - newSize.width / 2, y: currentCenter.y - newSize.height / 2)
         panel.setFrame(NSRect(origin: newOrigin, size: newSize), display: true, animate: true)
         saveHUDSettings(frame: NSRect(origin: newOrigin, size: newSize))
+        rebuildMenu()
+        settingsController?.update(state: currentSettingsState)
     }
 
     private func syncHUDVisibility() {
@@ -347,23 +403,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 scale: hudScale,
                 opacity: hudOpacity,
                 showsHeatmap: showsHeatmap,
-                showsTypingStats: showsTypingStats
+                showsTypingStats: showsTypingStats,
+                usesSymbolicKeyLabels: usesSymbolicKeyLabels,
+                keyboardColorTheme: keyboardColorTheme,
+                heatmapColorTheme: heatmapColorTheme,
+                graphColorTheme: graphColorTheme
             )
         )
     }
 
     @objc private func toggleHeatmap() {
-        showsHeatmap.toggle()
+        setHeatmapVisible(!showsHeatmap)
+    }
+
+    private func setHeatmapVisible(_ enabled: Bool) {
+        showsHeatmap = enabled
         saveHUDSettings()
         updateHUD()
         rebuildMenu()
+        settingsController?.update(state: currentSettingsState)
+    }
+
+    @objc private func toggleSymbolicKeyLabels() {
+        setSymbolicKeyLabels(!usesSymbolicKeyLabels)
+    }
+
+    private func setSymbolicKeyLabels(_ enabled: Bool) {
+        usesSymbolicKeyLabels = enabled
+        saveHUDSettings()
+        updateHUD()
+        rebuildMenu()
+        settingsController?.update(state: currentSettingsState)
     }
 
     @objc private func toggleTypingStats() {
-        showsTypingStats.toggle()
+        setTypingStatsVisible(!showsTypingStats)
+    }
+
+    private func setTypingStatsVisible(_ enabled: Bool) {
+        showsTypingStats = enabled
         saveHUDSettings()
         updateHUD()
         rebuildMenu()
+        settingsController?.update(state: currentSettingsState)
     }
 
     @objc private func importKeymapFromPanel() {
@@ -386,6 +468,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pressedKeys.formIntersection(Set(keymap.physicalKeys.map(\.id)))
             pressedShiftKeys.formIntersection(pressedKeys)
             updateHUD()
+            settingsController?.update(state: currentSettingsState)
             dismissKeymapOnboarding(markDismissed: true)
             syncHUDVisibility()
             showStatusItemFlash(.success)
@@ -495,24 +578,92 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showSettings() {
         if settingsController == nil {
             settingsController = ProbeSettingsWindowController(
-                selectedIcon: menuBarIcon,
+                state: currentSettingsState,
                 onIconSelected: { [weak self] choice in
                     self?.setMenuBarIcon(choice)
+                },
+                onSymbolicKeyLabelsChanged: { [weak self] enabled in
+                    self?.setSymbolicKeyLabels(enabled)
+                },
+                onKeyboardColorThemeChanged: { [weak self] theme in
+                    self?.setKeyboardColorTheme(theme)
+                },
+                onHeatmapColorThemeChanged: { [weak self] theme in
+                    self?.setHeatmapColorTheme(theme)
+                },
+                onGraphColorThemeChanged: { [weak self] theme in
+                    self?.setGraphColorTheme(theme)
+                },
+                onScaleChanged: { [weak self] scale in
+                    self?.setScale(scale)
+                },
+                onOpacityChanged: { [weak self] opacity in
+                    self?.setOpacity(opacity)
+                },
+                onHeatmapVisibilityChanged: { [weak self] enabled in
+                    self?.setHeatmapVisible(enabled)
+                },
+                onTypingStatsVisibilityChanged: { [weak self] enabled in
+                    self?.setTypingStatsVisible(enabled)
+                },
+                onImportKeymap: { [weak self] in
+                    self?.importKeymapFromPanel()
+                },
+                onImportKeymapAt: { [weak self] url in
+                    self?.importKeymap(at: url)
                 }
             )
         }
 
-        settingsController?.update(selectedIcon: menuBarIcon)
+        settingsController?.update(state: currentSettingsState)
         settingsController?.window?.center()
         settingsController?.showWindow(nil)
         settingsController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    private var currentSettingsState: ProbeSettingsState {
+        ProbeSettingsState(
+            selectedIcon: menuBarIcon,
+            usesSymbolicKeyLabels: usesSymbolicKeyLabels,
+            keyboardColorTheme: keyboardColorTheme,
+            heatmapColorTheme: heatmapColorTheme,
+            graphColorTheme: graphColorTheme,
+            scale: hudScale,
+            opacity: hudOpacity,
+            showsHeatmap: showsHeatmap,
+            showsTypingStats: showsTypingStats,
+            keymap: keymap,
+            activeLayer: activeLayer,
+            hasUsableKeymap: hasUsableKeymap
+        )
+    }
+
     private func setMenuBarIcon(_ choice: MenuBarIconChoice) {
         menuBarIcon = choice
         menuBarIconStore.save(choice)
         setStatusItemIcon(.normal)
+    }
+
+    private func setKeyboardColorTheme(_ theme: KeyboardColorTheme) {
+        keyboardColorTheme = theme
+        saveHUDSettings()
+        updateHUD()
+        settingsController?.update(state: currentSettingsState)
+    }
+
+    private func setHeatmapColorTheme(_ theme: HeatmapColorTheme) {
+        heatmapColorTheme = theme
+        saveHUDSettings()
+        updateHUD()
+        settingsController?.update(state: currentSettingsState)
+    }
+
+    private func setGraphColorTheme(_ theme: GraphColorTheme) {
+        graphColorTheme = theme
+        saveHUDSettings()
+        updateHUD()
+        settingsController?.update(state: currentSettingsState)
     }
 
     @objc private func quit() {

@@ -58,6 +58,16 @@ Open and run `Probe.xcodeproj`, or build from the command line:
 xcodebuild -project Probe.xcodeproj -scheme Probe -configuration Debug -destination 'platform=macOS' build
 ```
 
+The repo also includes `make` shortcuts for the common local workflow:
+
+```sh
+make generate       # Generate Probe.xcodeproj with XcodeGen
+make build          # Build a Debug app
+make build-release  # Build a Release app
+make archive        # Create .archives/Probe.xcarchive
+make install        # Install the Release app to /Applications
+```
+
 On first launch, Probe asks you to drop or choose your Voyager `keymap.c`, `.qmk`,
 or QMK/Oryx source ZIP. The imported keymap is stored locally in Application
 Support.

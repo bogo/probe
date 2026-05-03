@@ -9,8 +9,9 @@ public enum KeymapParserError: Error, Equatable, Sendable {
 public enum KeymapParser {
     public static func parse(_ source: String) throws -> [[KeyLabel]] {
         let layoutCalls = try extractLayoutCalls(from: source)
+        let tapDanceDefinitions = TapDanceParser.definitions(in: source)
         let parsed = layoutCalls.enumerated().map { _, body in
-            splitTopLevel(body).map { KeyExpressionParser.label(for: $0) }
+            splitTopLevel(body).map { KeyExpressionParser.label(for: $0, tapDanceDefinitions: tapDanceDefinitions) }
         }
 
         for (index, layer) in parsed.enumerated() where layer.count != VoyagerLayout.keyCount {
@@ -113,11 +114,14 @@ public enum KeymapParser {
 }
 
 enum KeyExpressionParser {
-    static func label(for expression: String) -> KeyLabel {
+    static func label(
+        for expression: String,
+        tapDanceDefinitions: [String: TapDanceDefinition] = [:]
+    ) -> KeyLabel {
         let raw = expression.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let call = FunctionCall(raw) {
-            return label(for: call, raw: raw)
+            return label(for: call, raw: raw, tapDanceDefinitions: tapDanceDefinitions)
         }
 
         if let basic = basicLabel(raw) {
@@ -127,11 +131,15 @@ enum KeyExpressionParser {
         return KeyLabel.unknown(raw)
     }
 
-    private static func label(for call: FunctionCall, raw: String) -> KeyLabel {
+    private static func label(
+        for call: FunctionCall,
+        raw: String,
+        tapDanceDefinitions: [String: TapDanceDefinition]
+    ) -> KeyLabel {
         switch call.name {
         case "MT":
             guard call.arguments.count == 2 else { return KeyLabel.unknown(raw) }
-            let tap = label(for: call.arguments[1])
+            let tap = label(for: call.arguments[1], tapDanceDefinitions: tapDanceDefinitions)
             return KeyLabel(
                 primary: tap.primary,
                 secondary: modifierLabel(call.arguments[0]),
@@ -140,7 +148,7 @@ enum KeyExpressionParser {
             )
         case "LT":
             guard call.arguments.count == 2 else { return KeyLabel.unknown(raw) }
-            let tap = label(for: call.arguments[1])
+            let tap = label(for: call.arguments[1], tapDanceDefinitions: tapDanceDefinitions)
             return KeyLabel(
                 primary: tap.primary,
                 secondary: "Layer \(call.arguments[0].trimmed())",
@@ -156,7 +164,7 @@ enum KeyExpressionParser {
             )
         case "LGUI", "RGUI", "LCMD", "RCMD", "LCTL", "RCTL", "LSFT", "RSFT", "LALT", "RALT":
             guard call.arguments.count == 1 else { return KeyLabel.unknown(raw) }
-            let inner = label(for: call.arguments[0])
+            let inner = label(for: call.arguments[0], tapDanceDefinitions: tapDanceDefinitions)
             let modifier = wrapperModifierLabel(call.name)
             return KeyLabel(
                 primary: "\(modifier)+\(inner.primary)",
@@ -164,6 +172,14 @@ enum KeyExpressionParser {
                 raw: raw,
                 role: .chord
             )
+        case "TD":
+            guard
+                call.arguments.count == 1,
+                let definition = tapDanceDefinitions[call.arguments[0].trimmed()]
+            else {
+                return KeyLabel.unknown(raw)
+            }
+            return definition.label(raw: raw)
         default:
             return KeyLabel.unknown(raw)
         }
@@ -312,6 +328,203 @@ enum KeyExpressionParser {
             uniqueKeysWithValues: (1...24).map {
                 ("KC_F\($0)", ("F\($0)", nil, .normal))
             })
+}
+
+struct TapDanceDefinition {
+    private let singleTap: KeyLabel?
+    private let singleHold: KeyLabel?
+    private let doubleTap: KeyLabel?
+    private let doubleHold: KeyLabel?
+
+    init(actions: [TapDanceStep: KeyLabel]) {
+        singleTap = actions[.singleTap]
+        singleHold = actions[.singleHold]
+        doubleTap = actions[.doubleTap]
+        doubleHold = actions[.doubleHold]
+    }
+
+    func label(raw: String) -> KeyLabel {
+        guard let primary = primaryLabel else {
+            return KeyLabel.unknown(raw)
+        }
+
+        return KeyLabel(
+            primary: primary,
+            secondary: secondaryLabel,
+            raw: raw,
+            role: role
+        )
+    }
+
+    private var primaryLabel: String? {
+        if let singleHold {
+            return singleHold.primary
+        }
+        if let singleTap {
+            return singleTap.primary
+        }
+        if let doubleTap {
+            return "2x \(doubleTap.primary)"
+        }
+        if let doubleHold {
+            return "2x Hold \(doubleHold.primary)"
+        }
+        return nil
+    }
+
+    private var secondaryLabel: String? {
+        if let doubleTap {
+            return "2x \(doubleTap.primary)"
+        }
+        if let singleTap {
+            return singleTap.primary
+        }
+        if let doubleHold {
+            return "2x Hold \(doubleHold.primary)"
+        }
+        return nil
+    }
+
+    private var role: KeyRole {
+        if singleHold?.role == .modifier {
+            return .modTap
+        }
+        return .custom
+    }
+}
+
+enum TapDanceStep: String {
+    case singleTap = "SINGLE_TAP"
+    case singleHold = "SINGLE_HOLD"
+    case doubleTap = "DOUBLE_TAP"
+    case doubleHold = "DOUBLE_HOLD"
+    case doubleSingleTap = "DOUBLE_SINGLE_TAP"
+}
+
+enum TapDanceParser {
+    static func definitions(in source: String) -> [String: TapDanceDefinition] {
+        let functions = finishedFunctions(in: source)
+        return Dictionary(
+            uniqueKeysWithValues: functions.compactMap { danceCode, functionName in
+                let actions = actions(in: source, functionName: functionName)
+                guard !actions.isEmpty else { return nil }
+                return (danceCode, TapDanceDefinition(actions: actions))
+            }
+        )
+    }
+
+    private static func finishedFunctions(in source: String) -> [String: String] {
+        let pattern = #"\[(DANCE_[A-Za-z0-9_]+)\]\s*=\s*ACTION_TAP_DANCE_FN_ADVANCED\([^,]*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*,"#
+        return matches(pattern: pattern, in: source).reduce(into: [:]) { result, match in
+            guard match.count == 3 else { return }
+            result[match[1]] = match[2]
+        }
+    }
+
+    private static func actions(in source: String, functionName: String) -> [TapDanceStep: KeyLabel] {
+        guard let body = functionBody(named: functionName, in: source) else { return [:] }
+        let pattern = #"case\s+(SINGLE_TAP|SINGLE_HOLD|DOUBLE_TAP|DOUBLE_HOLD|DOUBLE_SINGLE_TAP)\s*:\s*(.*?)\s*break\s*;"#
+        return matches(pattern: pattern, in: body, dotMatchesLineSeparators: true).reduce(into: [:]) { result, match in
+            guard
+                match.count == 3,
+                let step = TapDanceStep(rawValue: match[1]),
+                let keycode = firstKeycode(in: match[2])
+            else {
+                return
+            }
+            result[step] = KeyExpressionParser.label(for: keycode)
+        }
+    }
+
+    private static func functionBody(named functionName: String, in source: String) -> String? {
+        var searchRange = source.startIndex..<source.endIndex
+        while let nameRange = source.range(of: functionName, range: searchRange) {
+            guard
+                let brace = source[nameRange.upperBound...].firstIndex(of: "{"),
+                let closeBrace = matchingBrace(in: source, openBrace: brace)
+            else {
+                return nil
+            }
+
+            let prefix = source[..<nameRange.lowerBound]
+                .split(whereSeparator: { $0.isWhitespace || $0 == "\n" || $0 == ";" })
+                .last
+                .map(String.init)
+            if prefix == "void" {
+                let bodyStart = source.index(after: brace)
+                return String(source[bodyStart..<closeBrace])
+            }
+
+            searchRange = source.index(after: nameRange.lowerBound)..<source.endIndex
+        }
+        return nil
+    }
+
+    private static func firstKeycode(in statement: String) -> String? {
+        for functionName in ["register_code16", "register_code", "tap_code16", "tap_code"] {
+            guard
+                let nameRange = statement.range(of: functionName),
+                let openParen = statement[nameRange.upperBound...].firstIndex(of: "("),
+                let closeParen = matchingParen(in: statement, openParen: openParen)
+            else {
+                continue
+            }
+            let argumentStart = statement.index(after: openParen)
+            return String(statement[argumentStart..<closeParen]).trimmed()
+        }
+        return nil
+    }
+
+    private static func matchingParen(in source: String, openParen: String.Index) -> String.Index? {
+        matchingDelimiter(in: source, open: "(", close: ")", openIndex: openParen)
+    }
+
+    private static func matchingBrace(in source: String, openBrace: String.Index) -> String.Index? {
+        matchingDelimiter(in: source, open: "{", close: "}", openIndex: openBrace)
+    }
+
+    private static func matchingDelimiter(
+        in source: String,
+        open: Character,
+        close: Character,
+        openIndex: String.Index
+    ) -> String.Index? {
+        var depth = 0
+        var index = openIndex
+        while index < source.endIndex {
+            switch source[index] {
+            case open:
+                depth += 1
+            case close:
+                depth -= 1
+                if depth == 0 {
+                    return index
+                }
+            default:
+                break
+            }
+            index = source.index(after: index)
+        }
+        return nil
+    }
+
+    private static func matches(
+        pattern: String,
+        in source: String,
+        dotMatchesLineSeparators: Bool = false
+    ) -> [[String]] {
+        let options: NSRegularExpression.Options = dotMatchesLineSeparators ? [.dotMatchesLineSeparators] : []
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
+            return []
+        }
+        let nsRange = NSRange(source.startIndex..<source.endIndex, in: source)
+        return regex.matches(in: source, range: nsRange).map { match in
+            (0..<match.numberOfRanges).map { index in
+                guard let range = Range(match.range(at: index), in: source) else { return "" }
+                return String(source[range])
+            }
+        }
+    }
 }
 
 struct FunctionCall {

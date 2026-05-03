@@ -33,6 +33,7 @@ targets:
         PRODUCT_NAME: Probe
         INFOPLIST_FILE: Apps/Probe/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: Apps/Probe/Probe.entitlements
         SWIFT_VERSION: "6.0"
         CODE_SIGN_STYLE: Automatic
         ENABLE_HARDENED_RUNTIME: YES
@@ -48,6 +49,7 @@ targets:
       - path: Apps/Probe/Sources/KeymapImportSupport.swift
       - path: Apps/Probe/Sources/KeymapArchiveImporter.swift
       - path: Apps/Probe/Sources/KeyboardHUDView.swift
+      - path: Apps/Probe/Sources/MenuBarIconSettings.swift
       - path: Apps/Probe/Sources/RawHIDMonitor.swift
       - path: Apps/Probe/Sources/TypingMetricsStore.swift
     dependencies:

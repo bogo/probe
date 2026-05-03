@@ -6,6 +6,10 @@ struct HUDSettings: Equatable {
     var opacity: CGFloat
     var showsHeatmap: Bool
     var showsTypingStats: Bool
+    var usesSymbolicKeyLabels: Bool
+    var keyboardColorTheme: KeyboardColorTheme
+    var heatmapColorTheme: HeatmapColorTheme
+    var graphColorTheme: GraphColorTheme
     var cornerAnchor: HUDCornerAnchor? = nil
 
     static let defaultFrame = NSRect(x: 120, y: 120, width: 900, height: 360)
@@ -13,14 +17,74 @@ struct HUDSettings: Equatable {
     static let defaultOpacity: CGFloat = 0.88
     static let defaultShowsHeatmap = true
     static let defaultShowsTypingStats = false
+    static let defaultUsesSymbolicKeyLabels = false
+    static let defaultKeyboardColorTheme = KeyboardColorTheme.defaultTheme
+    static let defaultHeatmapColorTheme = HeatmapColorTheme.defaultTheme
+    static let defaultGraphColorTheme = GraphColorTheme.defaultTheme
 
     static let defaults = HUDSettings(
         frame: defaultFrame,
         scale: defaultScale,
         opacity: defaultOpacity,
         showsHeatmap: defaultShowsHeatmap,
-        showsTypingStats: defaultShowsTypingStats
+        showsTypingStats: defaultShowsTypingStats,
+        usesSymbolicKeyLabels: defaultUsesSymbolicKeyLabels,
+        keyboardColorTheme: defaultKeyboardColorTheme,
+        heatmapColorTheme: defaultHeatmapColorTheme,
+        graphColorTheme: defaultGraphColorTheme
     )
+}
+
+enum HUDScaleChoice: String, CaseIterable {
+    case small
+    case medium
+    case large
+
+    var title: String {
+        switch self {
+        case .small: "Small"
+        case .medium: "Medium"
+        case .large: "Large"
+        }
+    }
+
+    var value: CGFloat {
+        switch self {
+        case .small: 0.78
+        case .medium: 1.0
+        case .large: 1.22
+        }
+    }
+
+    static func nearest(to scale: CGFloat) -> HUDScaleChoice {
+        allCases.min { abs($0.value - scale) < abs($1.value - scale) } ?? .medium
+    }
+}
+
+enum HUDOpacityChoice: String, CaseIterable {
+    case translucent
+    case balanced
+    case vivid
+
+    var title: String {
+        switch self {
+        case .translucent: "45%"
+        case .balanced: "65%"
+        case .vivid: "85%"
+        }
+    }
+
+    var value: CGFloat {
+        switch self {
+        case .translucent: 0.45
+        case .balanced: 0.65
+        case .vivid: 0.85
+        }
+    }
+
+    static func nearest(to opacity: CGFloat) -> HUDOpacityChoice {
+        allCases.min { abs($0.value - opacity) < abs($1.value - opacity) } ?? .vivid
+    }
 }
 
 struct HUDSettingsStore {
@@ -62,6 +126,28 @@ struct HUDSettingsStore {
             settings.showsTypingStats = defaults.bool(forKey: Key.showsTypingStats)
         }
 
+        if defaults.object(forKey: Key.usesSymbolicKeyLabels) != nil {
+            settings.usesSymbolicKeyLabels = defaults.bool(forKey: Key.usesSymbolicKeyLabels)
+        }
+
+        if let rawValue = defaults.string(forKey: Key.keyboardColorTheme),
+            let theme = KeyboardColorTheme(rawValue: rawValue)
+        {
+            settings.keyboardColorTheme = theme
+        }
+
+        if let rawValue = defaults.string(forKey: Key.heatmapColorTheme),
+            let theme = HeatmapColorTheme(rawValue: rawValue)
+        {
+            settings.heatmapColorTheme = theme
+        }
+
+        if let rawValue = defaults.string(forKey: Key.graphColorTheme),
+            let theme = GraphColorTheme(rawValue: rawValue)
+        {
+            settings.graphColorTheme = theme
+        }
+
         if let anchor = loadCornerAnchor(),
             let resolvedFrame = resolve(anchor: anchor, size: settings.frame.size)
         {
@@ -78,6 +164,10 @@ struct HUDSettingsStore {
         defaults.set(Double(settings.opacity), forKey: Key.opacity)
         defaults.set(settings.showsHeatmap, forKey: Key.showsHeatmap)
         defaults.set(settings.showsTypingStats, forKey: Key.showsTypingStats)
+        defaults.set(settings.usesSymbolicKeyLabels, forKey: Key.usesSymbolicKeyLabels)
+        defaults.set(settings.keyboardColorTheme.rawValue, forKey: Key.keyboardColorTheme)
+        defaults.set(settings.heatmapColorTheme.rawValue, forKey: Key.heatmapColorTheme)
+        defaults.set(settings.graphColorTheme.rawValue, forKey: Key.graphColorTheme)
 
         if let anchor = cornerAnchor(for: settings.frame) {
             defaults.set(anchor.corner.rawValue, forKey: Key.anchorCorner)
@@ -98,6 +188,10 @@ struct HUDSettingsStore {
         static let opacity = "hud.opacity"
         static let showsHeatmap = "hud.showsHeatmap"
         static let showsTypingStats = "hud.showsTypingStats"
+        static let usesSymbolicKeyLabels = "hud.usesSymbolicKeyLabels"
+        static let keyboardColorTheme = "hud.keyboardColorTheme"
+        static let heatmapColorTheme = "hud.heatmapColorTheme"
+        static let graphColorTheme = "hud.graphColorTheme"
         static let anchorCorner = "hud.cornerAnchor.corner"
         static let anchorHorizontalInset = "hud.cornerAnchor.horizontalInset"
         static let anchorVerticalInset = "hud.cornerAnchor.verticalInset"
